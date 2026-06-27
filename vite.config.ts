@@ -6,8 +6,15 @@ import fs from 'fs'
 
 export default defineConfig({
   plugins: [
-    vue(),
-    dts({ rollupTypes: true }),
+    vue({
+      features: {
+        customElement: true
+      }
+    }),
+    dts({
+      rollupTypes: true,
+      tsconfigPath: './tsconfig.app.json'
+    }),
     {
       name: 'serve-dev-wasm',
       // This hook only runs during 'npm run dev' (development)

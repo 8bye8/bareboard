@@ -18,4 +18,13 @@ jobs:
       - run: npm ci
 
       # Notice the env block is completely gone!
-      - run: npm publish --provenance --access public
+      - name: Publish to npm (Auto-detect prerelease)
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "Prerelease detected ($VERSION). Publishing to 'next' tag..."
+            npm publish --provenance --access public --tag next
+          else
+            echo "Stable release detected ($VERSION). Publishing to 'latest' tag..."
+            npm publish --provenance --access public
+          fi

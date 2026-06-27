@@ -1,6 +1,6 @@
 {
   "name": "@8bye8/bareboard",
-  "version": "0.0.1-dev.3",
+  "version": "0.0.1-dev.4",
   "type": "module",
   "main": "./dist/bareboard.umd.cjs",
   "module": "./dist/bareboard.js",

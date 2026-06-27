@@ -11,6 +11,10 @@
       "require": "./dist/bareboard.umd.cjs"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/8bye8/bareboard.git"
+  },
   "files": [
     "dist"
   ],

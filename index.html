@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bareboard Wasm Test</title>
+    <script src="/dev-assets/wasm_exec.js"></script>
+</head>
+<body>
+<bare-board
+        id="chess-board"
+        fen="rnbqkbnr/ppPppp1p/8/8/8/8/PPP1PPPp/RNBQKBNR w KQkq - 0 5"
+        theme="classic"
+        enable-sound="false"
+></bare-board>
+
+<script type="module">
+    import { register } from '/src/index.ts'
+    register()
+
+    const board = document.getElementById('chess-board')
+    board.doHighLightSquares = false
+    board.enableClickToMove = true;
+    // board.pieceThemeUrl = pieceSetResolver;
+
+    let currentFen = 'rnbqkbnr/ppPppp1p/8/8/8/8/PPP1PPPp/RNBQKBNR w KQkq - 0 5'
+    let isEngineReady = false
+    let wasmExports = null
+    let wasmMemory = null
+
+    board.addEventListener('pieceTouched', (event) => {
+        const data = event.detail;
+        const sourceSquare = Array.isArray(data) ? data[0] : data;
+
+        if (!isEngineReady) return;
+
+        try {
+            board.validMoves = calculateMovesFromWasm(
+                currentFen,
+                sourceSquare.rankIndex,
+                sourceSquare.fileIndex
+            );
+        } catch (e) {
+            console.error('Engine calculation failed:', e);
+            board.validMoves = [];
+        }
+    });
+
+    board.addEventListener('movePlayed', (event) => {
+        const move = event.detail.sourceSquare ? event.detail : event.detail[0] || event.detail;
+
+        if (!move || !move.sourceSquare) {
+            console.error("Move object is malformed:", move);
+            return;
+        }
+
+        board.validMoves = [];
+        const gameState = applyMoveFromWasm(currentFen, move);
+        currentFen = gameState.fen
+        board.setAttribute('fen', currentFen)
+    })
+
+
+    async function initWasm() {
+        try {
+            const response = await fetch('/generator.wasm');
+            const go = new window.Go();
+            const { instance } = await WebAssembly.instantiateStreaming(response, go.importObject);
+            go.run(instance);
+            wasmExports = instance.exports;
+            wasmMemory = wasmExports.memory;
+            isEngineReady = true;
+            console.log('MoveGen Ready');
+        } catch (e) { console.error(e); }
+    }
+
+    function calculateMovesFromWasm(fen, rank, file) {
+        const encoder = new TextEncoder()
+        const fenBytes = encoder.encode(fen)
+        const fenPtr = wasmExports.malloc(fenBytes.length)
+
+        new Uint8Array(wasmMemory.buffer).set(fenBytes, fenPtr)
+
+        const resultPtr = wasmExports.getValidMoves(fenPtr, fenBytes.length, rank, file)
+        const memView = new Uint8Array(wasmMemory.buffer)
+
+        let endPtr = resultPtr
+        while (memView[endPtr] !== 0) endPtr++
+
+        return JSON.parse(new TextDecoder().decode(memView.subarray(resultPtr, endPtr)) || "[]")
+    }
+
+    function applyMoveFromWasm(fen, move) {
+        const encoder = new TextEncoder()
+        const fenBytes = encoder.encode(fen)
+        const fenPtr = wasmExports.malloc(fenBytes.length)
+
+        new Uint8Array(wasmMemory.buffer).set(fenBytes, fenPtr)
+
+        const promoteByte = move.promoteTo ? move.promoteTo.charCodeAt(0) : 0
+        const resultPtr = wasmExports.applyMove(
+            fenPtr, fenBytes.length,
+            move.sourceSquare.rankIndex, move.sourceSquare.fileIndex,
+            move.targetSquare.rankIndex, move.targetSquare.fileIndex,
+            promoteByte
+        )
+
+        const memView = new Uint8Array(wasmMemory.buffer)
+        let endPtr = resultPtr
+        while (memView[endPtr] !== 0) endPtr++
+
+        return JSON.parse(new TextDecoder().decode(memView.subarray(resultPtr, endPtr)))
+    }
+
+    /**
+     * Resolves a piece identifier (e.g., 'wK', 'bP') to a specific SVG URL.
+     * Matches the naming convention found in your provided governor set.
+     */
+    function pieceSetResolver(piece) {
+        // 1. Map piece chars to internal filenames
+        // Example: 'wK' -> 'wK.svg' or 'wK' -> 'wK'
+        // If your files use standard notation (w=white, b=black, K/Q/R/B/N/P):
+
+        const baseUrl = 'https://raw.githubusercontent.com/pychess/pychess/refs/heads/master/pieces/governor';
+
+        // Note: Ensure your piece strings match the case expected by your asset folder
+        // If your piece identifiers are single characters ('K', 'p'), normalize them:
+        const filename = piece.length === 1
+            ? (piece === piece.toUpperCase() ? 'w' : 'b') + piece.toUpperCase()
+            : piece;
+
+        return `${baseUrl}/${filename.toLowerCase()}.svg`;
+    }
+
+    initWasm()
+</script>
+</body>
+</html>

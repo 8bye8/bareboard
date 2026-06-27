@@ -1,0 +1,32 @@
+{
+  "name": "@8bye8/bareboard",
+  "version": "0.0.1-dev.0",
+  "type": "module",
+  "main": "./dist/bareboard.umd.cjs",
+  "module": "./dist/bareboard.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/bareboard.js",
+      "require": "./dist/bareboard.umd.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "@vue/tsconfig": "^0.9.1",
+    "sass-embedded": "^1.100.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.0",
+    "vite-plugin-dts": "^5.0.3",
+    "vue": "^3.5.39",
+    "vue-tsc": "^3.3.5"
+  }
+}

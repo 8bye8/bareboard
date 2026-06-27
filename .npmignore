@@ -1,0 +1,4 @@
+# .npmignore
+public/
+dist/generator.wasm
+dist/wasm_exec.js
